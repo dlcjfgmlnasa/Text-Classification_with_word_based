@@ -67,7 +67,7 @@ def main(argument):
     # Calculation Loss & Accuracy
     total_loss /= total_count
     total_accuracy /= total_count
-    print('total_loss : {0:5f} total_accuracy : {1:5f}'.format(total_loss, total_accuracy))
+    print('total_loss : {0:5f} \t total_accuracy : {1:5f}'.format(total_loss, total_accuracy))
 
 
 if __name__ == '__main__':
