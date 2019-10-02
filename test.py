@@ -2,74 +2,78 @@
 import os
 import torch
 import argparse
-import torch.nn as nn
-from common import get_model_info
-from torch.utils.data import DataLoader
-from data_helper import Dictionary, TextDataSet
-from common import accuracy
-
+import pandas as pd
+from predicate import Predication
+from sklearn.metrics import classification_report
 
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
 
 def get_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--test_path', type=str,
+    parser.add_argument('--naver_test_path', type=str,
                         default=os.path.join('./dataset', 'ratings_test.txt'))
     parser.add_argument('--model_store_path', type=str,
-                        default=os.path.join('./store', 'text_cnn', 'model', '0000.pth'))
+                        default=os.path.join('./store', 'text_rnn', 'model'))
+    parser.add_argument('--model_store_name', type=str,
+                        default='0011.pth')
     return parser.parse_args()
 
 
-def main(argument):
-    # Loading model
-    model_info = get_model_info(argument.model_store_path)
-
-    # Loading Dictionary
-    if not os.path.exists(model_info['dictionary_path']):
-        base_path = os.path.dirname(model_info['dictionary_path'])
-        dictionary = Dictionary(
-            data_path=argument.test_path,
-            dict_path=base_path
+class Testing(object):
+    def __init__(self, argument):
+        self.argument = argument
+        self.classify = Predication(
+            model_store_path=argument.model_store_path,
+            model_store_name=argument.model_store_name
         )
-    else:
-        dictionary = Dictionary()
+        self.max_sentence_size = 100
+        self.print_step = 20
+        self.youtube_comment_classification()
 
-    word2idx = dictionary.load_word2idx()
+    def naver_movie_review_classification(self):
+        # 네이버 영화 감상평 분류
+        df = pd.DataFrame([
+            (line.split('\t')[1], line.split('\t')[2])
+            for line in open(self.argument.naver_test_path, 'r', encoding='utf-8').readlines()[1:]
+        ], columns=['document', 'label']).dropna(how='any')
+        df.document = df.document.str.replace("[^ㄱ-ㅎㅏ-ㅣ가-힣 ]", "")
 
-    # Test Dataset & DataLoader
-    dataset = TextDataSet(data_path=argument.test_path, dictionary=dictionary, seq_len=model_info['seq_len'])
-    dataloader = DataLoader(dataset=dataset, batch_size=1000, shuffle=False)
+        sentence_list = list(df.document)
+        pred = self.sentence_classification(sentence_list)
+        true = list(df.label.astype(int))
+        self.report(true, pred)
 
-    criterion = nn.CrossEntropyLoss(ignore_index=word2idx['__PAD__'])
+    def youtube_comment_classification(self):
+        # 유투브 댓글 분류
+        pass
 
-    print('Test Start...')
+    def sentence_classification(self, sentence_list: list) -> list:
+        sentence_size = len(sentence_list)
+        start_range = range(0, sentence_size, self.max_sentence_size)
+        end_range = range(self.max_sentence_size, sentence_size + self.max_sentence_size, self.max_sentence_size)
+        size = len(end_range)
 
-    total_count = 0
-    with torch.no_grad():
-        total_loss = 0
-        total_accuracy = 0
+        print('Start Sentence Classification')
+        result = []
+        for i, (start, end) in enumerate(zip(start_range, end_range)):
+            output = self.classify.sentence_classification(sentence_list[start:end])
+            result.extend(output)
 
-        model = model_info['model']     # Get model
-        for i, (feature, label) in enumerate(dataloader):
-            output = model(feature)
-            output = output.to(device=device)
-            label = label.to(device=device, dtype=torch.int64)
+            if i % self.print_step == 0:
+                print('\t By Classification... => {0:4d}/{1:4d} - {2:2.2f}%'.
+                      format(i, size, (i/size)*100))
+        print('Complete')
 
-            loss = criterion(input=output, target=label)
-            acc = accuracy(inputs=output, target=label)
+        return result
 
-            print('i : {0:3d} \t loss : {1:5f} \t accuracy : {2:5f}'.format(i, loss.item(), acc.item()))
-            total_accuracy += acc.item()
-            total_loss += loss.item()
-            total_count += 1
-
-    # Calculation Loss & Accuracy
-    total_loss /= total_count
-    total_accuracy /= total_count
-    print('total_loss : {0:5f} \t total_accuracy : {1:5f}'.format(total_loss, total_accuracy))
+    @staticmethod
+    def report(true, pred):
+        target_names = ['부정', '긍정']
+        print(classification_report(true, pred, target_names=target_names))
 
 
 if __name__ == '__main__':
     args = get_args()
-    main(args)
+    testing = Testing(args)
+    testing.naver_movie_review_classification()
