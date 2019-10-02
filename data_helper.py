@@ -1,31 +1,19 @@
 # -*- coding:utf-8 -*-
 import os
+import json
 import torch
 import pickle
-import numpy as np
 import pandas as pd
 from konlpy.tag import Okt
 from torch.utils.data import Dataset
 
 
-def split_tokenizer(line: str, tokenizer) -> list:
-    tokens = tokenizer.morphs(line, norm=True)
-    return tokens
-
-
 class Dictionary(object):
     def __init__(self,
-                 data_path=None,
                  dict_path=os.path.join('./dataset', 'dictionary'),
                  min_count=0,
                  max_count=50000
                  ):
-        if data_path:
-            self.df = pd.DataFrame([
-                (line.split('\t')[1].strip(), line.split('\t')[2].strip())
-                for line in open(data_path, 'r', encoding='utf-8').readlines()[1:]
-            ], columns=['document', 'label'])
-
         self.SPK_KEY = ['__UNK__', '__PAD__', '__STR__', '__END__']
         self.word2count_name = 'word2count.dic'
         self.word2idx_name = 'word2idx.dic'
@@ -44,7 +32,15 @@ class Dictionary(object):
         else:
             raise FileNotFoundError()
 
-    def make_dict(self):
+    def make_dict(self, data_path):
+        df = pd.DataFrame([
+            (line.split('\t')[1].strip(), line.split('\t')[2].strip())
+            for line in open(data_path, 'r', encoding='utf-8').readlines()[1:]
+        ], columns=['document', 'label'])
+        df = df.dropna(how='any')
+        df.document = df.document.str.replace("[^ㄱ-ㅎㅏ-ㅣ가-힣 ]", "")
+        data_size = len(df)
+
         print('make dictionary')
         if not os.path.exists(self.dict_path):
             os.makedirs(self.dict_path)
@@ -57,8 +53,12 @@ class Dictionary(object):
         # Calculation Word2Count
         print('\t - 1. Calculation Word2Count')
         word2count = {}
-        for line in self.df.document:
-            tokens = split_tokenizer(line, self.tokenizer)
+        for i, document in enumerate(df.document):
+            if i % 100 == 0:
+                print('\t\t{0:6d}/{1:6d} => {2:2.2f}%'.
+                      format(i, data_size, (i / data_size) * 100))
+
+            tokens = DataPreProcessing.split_tokenizer(document)
             for token in tokens:
                 try:
                     word2count[token] += 1
@@ -98,39 +98,74 @@ class Dictionary(object):
         print('\t\t Complete...')
 
 
-class TextDataSet(Dataset):
-    def __init__(self, data_path: str, dictionary: Dictionary, seq_len: int):
-        self.df = pd.DataFrame([
-            (line.split('\t')[1].strip(), line.split('\t')[2].strip())
-            for line in open(data_path, 'r', encoding='utf-8').readlines()[1:]
-        ], columns=['document', 'label'])
-        self.df.label = self.df.label.astype(np.int)
+class DataPreProcessing(object):
+    tokenizer = Okt()
 
+    def __init__(self, dictionary: Dictionary, seq_len: int):
         self.dictionary = dictionary
         self.word2idx = self.dictionary.load_word2idx()
         self.seq_len = seq_len
-        self.tokenizer = Okt()
 
-    def __len__(self):
-        return len(self.df)
+    @staticmethod
+    def split_tokenizer(line: str) -> list:
+        # Split Tokenizer (document -> token)
+        tokens = DataPreProcessing.tokenizer.morphs(line, norm=True, stem=True)
+        return tokens
 
-    def __getitem__(self, index):
-        data = self.df.iloc[index]
-        feature = torch.tensor(self.padding(self.apply_word2idx(data.document)))
-        label = torch.tensor(data.label)
-        return feature, label
-
-    def apply_word2idx(self, line):
+    def apply_word2idx(self, document: str) -> list:
         idx_list = []
-        for token in split_tokenizer(line, tokenizer=self.tokenizer)[:self.seq_len]:
+        for token in DataPreProcessing.split_tokenizer(document):
             try:
                 idx_list.append(self.word2idx[token])
             except KeyError:
                 idx_list.append(self.word2idx['__UNK__'])
         return idx_list
 
-    def padding(self, idx_list):
+    def padding(self, idx_list: list) -> list:
         size = len(idx_list)
         padding_idx = [self.word2idx['__PAD__'] for _ in range(self.seq_len - size)]
         idx_list = idx_list + padding_idx
+        idx_list = idx_list[:self.seq_len]
         return idx_list
+
+    def start(self, df, target_path, target_filename):
+        data_size = len(df)
+
+        if not os.path.exists(target_path):
+            os.makedirs(target_path)
+        target_path = os.path.join(target_path, target_filename)
+
+        print('Start Preprocessing...')
+
+        with open(target_path, 'w') as f:
+            data = dict()
+            for i, (document, label) in enumerate(zip(df.document, df.label)):
+                # Print PreProcessing Progress
+                if i % 100 == 0:
+                    print('\t PreProcessing... => {0:6d}/{1:6d} - {2:2.2f}%'.
+                          format(i, data_size, (i/data_size) * 100))
+
+                feature = self.apply_word2idx(document)
+                feature = self.padding(feature)
+
+                data[i] = {
+                    'feature': feature,
+                    'label': int(label.strip())
+                }
+            json.dump(data, f, sort_keys=True)
+        print('Complete...')
+
+
+class TextDataSet(Dataset):
+    def __init__(self, path, device: torch.device):
+        self.dataset = json.load(open(path, 'r'))
+        self.device = device
+
+    def __len__(self):
+        return len(self.dataset)
+
+    def __getitem__(self, index):
+        data = self.dataset[str(index)]
+        feature = torch.tensor(data['feature'], device=self.device, dtype=torch.int64)
+        label = torch.tensor(data['label'], device=self.device, dtype=torch.int64)
+        return feature, label
