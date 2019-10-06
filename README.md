@@ -27,6 +27,7 @@
     + `label`: The sentiment class of the review. (0: negative, 1: positive)  
     + dataset line split `\t`
     + **example**
+    <br>
     
 	|id | document | label| 
 	|:-:|:--------:|:----:|
