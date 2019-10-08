@@ -25,10 +25,11 @@ def get_args():
                         default=os.path.join('./dataset', 'preprocessing'))
 
     parser.add_argument('--model', type=str,
-                        default='BiRNNWithAttention',
+                        default='MultiHeadAttention',
                         choices=['TextCNN',
                                  'TextRNN',
-                                 'BiRNNWithAttention'])
+                                 'BiRNNWithAttention',
+                                 'MultiHeadAttention'])
 
     parser.add_argument('--epochs', type=int, default=20)
     parser.add_argument('--batch_size', type=int, default=500)
@@ -48,14 +49,17 @@ def get_args():
     parser.add_argument('--rnn_num_layer', type=int, default=2)
     parser.add_argument('--rnn_bidirectional', type=bool, default=True)
 
+    parser.add_argument('--self_attention_num_units', type=int, default=64)
+    parser.add_argument('--self_attention_num_heads', type=int, default=8)
+
     parser.add_argument('--print_summary_step', type=int, default=50)
     parser.add_argument('--print_step', type=int, default=50)
     parser.add_argument('--print_val_step', type=int, default=100)
 
     parser.add_argument('--summary_store', type=str,
-                        default=os.path.join('./store', 'bi_rnn_with_attention', 'log'))
+                        default=os.path.join('./store', 'self_attention', 'log'))
     parser.add_argument('--model_store', type=str,
-                        default=os.path.join('./store', 'bi_rnn_with_attention', 'model'))
+                        default=os.path.join('./store', 'self_attention', 'model'))
     return parser.parse_args()
 
 
@@ -112,13 +116,13 @@ class Trainer(object):
                     self.summary.add_scalar('train/loss', loss.item(), total_count)
                     self.summary.add_scalar('train/accuracy', acc.item(), total_count)
 
-                # - Calculation Validation
-                if i % self.argument.print_val_step == 0:
-                    val_loss, val_acc = self.val()
-                    print('[ Val ] epoch : {0: 3d} \t i : {1:3d} \t loss : {2:2.6f} \t accuracy : {3:.5f}'.
-                          format(epoch, i, loss.item(), acc.item()))
-                    self.summary.add_scalar('val/loss', val_loss, total_count)
-                    self.summary.add_scalar('val/accuracy', val_acc, total_count)
+                # # - Calculation Validation
+                # if i % self.argument.print_val_step == 0:
+                #     val_loss, val_acc = self.val()
+                #     print('[ Val ] epoch : {0: 3d} \t i : {1:3d} \t loss : {2:2.6f} \t accuracy : {3:.5f}'.
+                #           format(epoch, i, loss.item(), acc.item()))
+                #     self.summary.add_scalar('val/loss', val_loss, total_count)
+                #     self.summary.add_scalar('val/accuracy', val_acc, total_count)
 
                 average_loss += loss.item()
                 epoch_count += 1
@@ -256,6 +260,9 @@ class Trainer(object):
         elif model_type == 'BiRNNWithAttention':
             from models.bi_rnn_with_attention import BiRNNWithAttention
             return BiRNNWithAttention(**parameter)
+        elif model_type == 'MultiHeadAttention':
+            from models.self_attention import MultiHeadAttention
+            return MultiHeadAttention(**parameter)
         else:
             raise NotImplemented()
 
@@ -270,6 +277,7 @@ class Trainer(object):
                 'padding_idx': self.word2idx['__PAD__'], 'dropout_rate': argument.dropout_rate
             }
             return parameter
+
         elif model_type == 'TextRNN':
             parameter = {
                 'word_size': len(self.word2idx), 'embedding_dim': argument.embedding_dim, 'rnn_dim': argument.rnn_dim,
@@ -277,11 +285,20 @@ class Trainer(object):
                 'padding_idx': self.word2idx['__PAD__'], 'bidirectional': argument.rnn_bidirectional
             }
             return parameter
+
         elif model_type == 'BiRNNWithAttention':
             parameter = {
                 'word_size': len(self.word2idx), 'embedding_dim': argument.embedding_dim, 'rnn_dim': argument.rnn_dim,
                 'num_layer': argument.rnn_num_layer, 'classes': argument.classes,
                 'padding_idx': self.word2idx['__PAD__']
+            }
+            return parameter
+
+        elif model_type == 'MultiHeadAttention':
+            parameter = {
+                'word_size': len(self.word2idx), 'embedding_dim': argument.embedding_dim,
+                'num_units': argument.self_attention_num_units, 'num_heads': argument.self_attention_num_heads,
+                'classes': argument.classes, 'padding_idx': self.word2idx['__PAD__']
             }
             return parameter
 
