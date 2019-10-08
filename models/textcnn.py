@@ -53,6 +53,6 @@ class TextCNN(nn.Module):
 
         # Fully Connection Neural Network
         output = self.fc(flatten_cnn_output_dropout)
-        output = torch.sigmoid(output)
+        output = nn.Softmax(dim=-1)(output)
 
         return output
