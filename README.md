@@ -65,6 +65,6 @@
 1. [TextCNN](#1.-TextCNN)  
 2. [TextRNN](#2.-TextRNN)  
   
-### 1. TextCNN  
+###1. TextCNN  
   
-### 2. TextRNN
+###2. TextRNN
