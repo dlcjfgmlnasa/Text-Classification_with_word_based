@@ -67,6 +67,7 @@
 1. [TextCNN](####-1.TextCNN)
 2. [TextRNN](####-2.TextRNN)
 3. [BiLSTM with Attention](####-3.BiLSTM_with_Attention)
+4. [Self Attention]()
     
 #### 1. TextCNN  
 
@@ -80,9 +81,13 @@
 
 </center>
 
-> **result**
+> **Training Graph**
 
 ![TextCNN Result Image](https://github.com/dlcjfgmlnasa/Text-Classification/blob/master/image/text_cnn_accuracy_loss.PNG?raw=true)
+
+> **Test**
+
+![TestCNN Test Result Image](https://github.com/dlcjfgmlnasa/Text-Classification/blob/master/image/text_cnn_test_result.PNG?raw=true)
 
 #### 2. TextRNN
 
@@ -96,9 +101,13 @@
 
 </center>
 
-> **result**
-
+> **Training Graph**
+ 
 ![TextRNN Result Image](https://github.com/dlcjfgmlnasa/Text-Classification/blob/master/image/text_rnn_accuracy_loss.PNG?raw=true)
+
+> **Test**
+
+![TextRNN Test Result Image](https://github.com/dlcjfgmlnasa/Text-Classification/blob/master/image/text_rnn_test_result.PNG?raw=true)
 
 #### 3. BiLSTM with Attention
 
@@ -112,6 +121,30 @@
 
 </center>
 
-> **result**
+> **Training Graph**
 
 ![BiLSTM Result Image](https://github.com/dlcjfgmlnasa/Text-Classification/blob/master/image/bi_rnn_with_attention_accuracy_loss.PNG?raw=true)
+
+> **Test**
+
+![BiLSTM Test Result Image](https://github.com/dlcjfgmlnasa/Text-Classification/blob/master/image/bi_rnn_with_attention_test_result.PNG?raw=true)
+
+#### 4. Self Attention
+
+> **paramter**
+
+<center>
+
+| epoch | batch_size | seq_len | embedding_dim | self_attention_dim | self_attention_num_heads |
+|:-----:|:----------:|:-------:|:-------------:|:---------:|:---------:|
+|  20   |    500     |    20   |      512      |   64	     |     8     |
+
+</center>
+
+> **Training Graph**
+
+![Self Attention Result Image](https://github.com/dlcjfgmlnasa/Text-Classification/blob/master/image/self_attention_accuracy_loss.PNG?raw=true)
+
+> **Test**
+
+![Self Attention Test Result Image](https://github.com/dlcjfgmlnasa/Text-Classification/blob/master/image/self_attention_test_result.PNG?raw=true)
