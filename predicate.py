@@ -8,6 +8,7 @@ device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
 class Predication(object):
     def __init__(self, model_store_path: str, model_store_name: str):
+        print('Model Loading....')
         self.model_store = self.get_model_store(
             os.path.join(model_store_path, model_store_name)
         )
@@ -17,6 +18,7 @@ class Predication(object):
             seq_len=self.model_store['seq_len']
         )
         self.model = self.model_store['model'].to(device)
+        print('Model Loading Complete!!')
 
     def load_dictionary(self) -> Dictionary:
         dictionary = Dictionary(
