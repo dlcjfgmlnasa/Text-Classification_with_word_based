@@ -13,8 +13,10 @@ def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--naver_test_path', type=str,
                         default=os.path.join('./dataset', 'ratings_test.txt'))
+    parser.add_argument('-youtube_test_path', type=str,
+                        default=os.path.join('./dataset', 'Youtube_comments.csv'))
     parser.add_argument('--model_store_path', type=str,
-                        default=os.path.join('./store', 'text_rnn', 'model'))
+                        default=os.path.join('./store', 'text_cnn', 'model'))
     parser.add_argument('--model_store_name', type=str,
                         default='0011.pth')
     return parser.parse_args()
@@ -29,6 +31,7 @@ class Testing(object):
         )
         self.max_sentence_size = 100
         self.print_step = 20
+        # self.naver_movie_review_classification()
         self.youtube_comment_classification()
 
     def naver_movie_review_classification(self):
@@ -46,7 +49,16 @@ class Testing(object):
 
     def youtube_comment_classification(self):
         # 유투브 댓글 분류
-        pass
+        df = pd.read_csv(self.argument.youtube_test_path).dropna(how='any')
+        df.textOriginal = df.textOriginal.str.replace("[^ㄱ-ㅎㅏ-ㅣ가-힣 ]", "")
+        sentence_list = list(df.textOriginal)
+
+        pred = self.sentence_classification(sentence_list)
+
+        label = ['부정', '긍정']
+        for sentence, result in zip(sentence_list, pred):
+            result = label[int(result)]
+            print('{} - [{}]'.format(sentence, result))
 
     def sentence_classification(self, sentence_list: list) -> list:
         sentence_size = len(sentence_list)
@@ -76,4 +88,3 @@ class Testing(object):
 if __name__ == '__main__':
     args = get_args()
     testing = Testing(args)
-    testing.naver_movie_review_classification()
