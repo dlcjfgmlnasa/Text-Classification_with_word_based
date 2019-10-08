@@ -25,8 +25,10 @@ def get_args():
                         default=os.path.join('./dataset', 'preprocessing'))
 
     parser.add_argument('--model', type=str,
-                        default='TextRNN',
-                        choices=['TextCNN', 'TextRNN'])
+                        default='BiRNNWithAttention',
+                        choices=['TextCNN',
+                                 'TextRNN',
+                                 'BiRNNWithAttention'])
 
     parser.add_argument('--epochs', type=int, default=20)
     parser.add_argument('--batch_size', type=int, default=500)
@@ -36,24 +38,24 @@ def get_args():
     parser.add_argument('--learning_rate', type=float, default=0.001)
     parser.add_argument('--data_split_rate', type=float, default=0.2)
 
-    # TextCNN
+    # TextCNN Parameter
     parser.add_argument('--out_channels', type=int, default=50)
     parser.add_argument('--dropout_rate', type=float, default=0.8)
     parser.add_argument('--n_grams', type=list, default=[2, 3, 4])
 
-    # TextRNN
+    # TextRNN Parameter
     parser.add_argument('--rnn_dim', type=int, default=50)
     parser.add_argument('--rnn_num_layer', type=int, default=2)
     parser.add_argument('--rnn_bidirectional', type=bool, default=True)
 
     parser.add_argument('--print_summary_step', type=int, default=50)
     parser.add_argument('--print_step', type=int, default=50)
-    parser.add_argument('--print_val_step', type=int, default=300)
+    parser.add_argument('--print_val_step', type=int, default=100)
 
     parser.add_argument('--summary_store', type=str,
-                        default=os.path.join('./store', 'text_rnn', 'log'))
+                        default=os.path.join('./store', 'bi_rnn_with_attention', 'log'))
     parser.add_argument('--model_store', type=str,
-                        default=os.path.join('./store', 'text_rnn', 'model'))
+                        default=os.path.join('./store', 'bi_rnn_with_attention', 'model'))
     return parser.parse_args()
 
 
@@ -87,6 +89,7 @@ class Trainer(object):
             average_accuracy = 0
             for i, data in enumerate(self.train_dataloader()):
                 feature, label = data
+
                 # NetWork Forward
                 output = self.model(feature)
 
@@ -250,6 +253,9 @@ class Trainer(object):
         elif model_type == 'TextRNN':
             from models.textrnn import TextRNN
             return TextRNN(**parameter)
+        elif model_type == 'BiRNNWithAttention':
+            from models.bi_rnn_with_attention import BiRNNWithAttention
+            return BiRNNWithAttention(**parameter)
         else:
             raise NotImplemented()
 
@@ -269,6 +275,13 @@ class Trainer(object):
                 'word_size': len(self.word2idx), 'embedding_dim': argument.embedding_dim, 'rnn_dim': argument.rnn_dim,
                 'num_layer': argument.rnn_num_layer, 'classes': argument.classes,
                 'padding_idx': self.word2idx['__PAD__'], 'bidirectional': argument.rnn_bidirectional
+            }
+            return parameter
+        elif model_type == 'BiRNNWithAttention':
+            parameter = {
+                'word_size': len(self.word2idx), 'embedding_dim': argument.embedding_dim, 'rnn_dim': argument.rnn_dim,
+                'num_layer': argument.rnn_num_layer, 'classes': argument.classes,
+                'padding_idx': self.word2idx['__PAD__']
             }
             return parameter
 
