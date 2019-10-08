@@ -50,6 +50,10 @@ class Predication(object):
             from models.textrnn import TextRNN
             model = TextRNN(**model_info['parameter'])
 
+        elif model_info['model_type'] == 'BiRNNWithAttention':
+            from models.bi_rnn_with_attention import BiRNNWithAttention
+            model = BiRNNWithAttention(**model_info['parameter'])
+
         else:
             raise NotImplemented()
 
